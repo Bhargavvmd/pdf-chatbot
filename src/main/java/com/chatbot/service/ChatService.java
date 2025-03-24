@@ -1,51 +1,89 @@
 package com.chatbot.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.UserMessage;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
-    private final VectorStore vectorStore;
     private final OllamaChatModel chatModel;
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+    private final VectorStore vectorStore;
+    private static final int MAX_CONTEXT_DOCS = 3;
+    private static final int MAX_CONTEXT_LENGTH = 2000;
 
+    /**
+     * Asynchronously processes a question and returns an AI-generated answer.
+     * Uses vector store for relevant document retrieval and chat model for answer generation.
+     *
+     * @param question The user's question
+     * @return CompletableFuture containing the AI-generated answer
+     */
+    @Async("chatExecutor")
+    @Cacheable(value = "chatResponses", key = "#question")
     public CompletableFuture<String> getAnswer(String question) {
+        log.info("Processing question: {}", question);
         return CompletableFuture.supplyAsync(() -> {
-            // Find relevant Q&A pairs from the vector store asynchronously
-            CompletableFuture<List<Document>> docsFuture = CompletableFuture.supplyAsync(() -> 
-                vectorStore.similaritySearch(question), executorService);
+            try {
+                // Find relevant documents asynchronously
+                log.debug("Finding relevant documents for question: {}", question);
+                CompletableFuture<List<Document>> relevantDocsFuture = findRelevantDocuments(question);
+                List<Document> relevantDocs = relevantDocsFuture.get();
+                log.info("Found {} relevant documents", relevantDocs.size());
 
-            // Wait for documents to be retrieved
-            List<Document> relevantDocs = docsFuture.join();
-            
-            // Combine relevant context with the question using stream
-            String context = relevantDocs.stream()
-                .map(Document::getContent)
-                .collect(Collectors.joining("\n\n", 
-                    "Based on the following context, please answer the question:\n\n",
-                    "\n\nQuestion: " + question));
-            
-            // Generate answer using chat model asynchronously
-            return CompletableFuture.supplyAsync(() -> {
-                Message userMessage = new UserMessage(context);
-                return chatModel.call(new Prompt(List.of(userMessage)))
+                // Build context from relevant documents
+                StringBuilder context = new StringBuilder();
+                for (Document doc : relevantDocs) {
+                    if (context.length() < MAX_CONTEXT_LENGTH) {
+                        context.append(doc.getContent()).append("\n\n");
+                        log.debug("Added document to context: {}", doc.getId());
+                    } else {
+                        log.debug("Context length limit reached. Skipping remaining documents.");
+                        break;
+                    }
+                }
+
+                // Generate answer using chat model
+                log.debug("Generating answer with context length: {}", context.length());
+                String prompt = String.format("Based on the following context, answer the question: %s\n\nContext: %s", 
+                    question, context.toString());
+                String answer = chatModel.call(new Prompt(prompt))
                     .getResult()
                     .getOutput()
                     .getContent();
-            }, executorService).join();
-        }, executorService);
+                log.info("Generated answer for question: '{}', Answer length: {}", question, answer.length());
+                log.debug("Generated answer: {}", answer);
+                return answer;
+            } catch (Exception e) {
+                log.error("Error processing question: '{}'. Error: {}", question, e.getMessage(), e);
+                return "I apologize, but I encountered an error while processing your question. Please try again.";
+            }
+        });
+    }
+
+    /**
+     * Asynchronously finds relevant documents from the vector store.
+     *
+     * @param question The user's question
+     * @return CompletableFuture containing a list of relevant documents
+     */
+    @Async("vectorStoreExecutor")
+    private CompletableFuture<List<Document>> findRelevantDocuments(String question) {
+        log.debug("Searching vector store for question: {}", question);
+        return CompletableFuture.supplyAsync(() -> {
+            List<Document> docs = vectorStore.similaritySearch(question);
+            log.debug("Vector store returned {} documents", docs.size());
+            return docs.subList(0, Math.min(docs.size(), MAX_CONTEXT_DOCS));
+        });
     }
 } 
