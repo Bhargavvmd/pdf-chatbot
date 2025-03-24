@@ -36,9 +36,8 @@ public class PdfController {
      */
     @PostMapping("/upload")
     public CompletableFuture<ResponseEntity<String>> uploadPdf(@RequestParam("file") MultipartFile file) {
-        return pdfProcessingService.processSinglePdf(file)
-            .thenApply(v -> ResponseEntity.ok("PDF processed successfully"))
-            .exceptionally(e -> ResponseEntity.internalServerError().body("Error processing PDF: " + e.getMessage()));
+        return pdfProcessingService.processPdf(file)
+            .thenApply(v -> ResponseEntity.ok("PDF processed successfully"));
     }
 
     /**
@@ -57,8 +56,8 @@ public class PdfController {
      */
     @PostMapping("/process-directory")
     public CompletableFuture<ResponseEntity<String>> processDirectory(@RequestParam String directoryPath) {
-        return pdfProcessingService.processDirectory(directoryPath)
-            .thenApply(v -> ResponseEntity.ok("Directory processed successfully"))
-            .exceptionally(e -> ResponseEntity.internalServerError().body("Error processing directory: " + e.getMessage()));
+        return CompletableFuture.completedFuture(
+            ResponseEntity.ok("Directory processing is not supported in this version")
+        );
     }
 } 

@@ -13,7 +13,7 @@ public class ChatController {
     private final ChatService chatService;
 
     @PostMapping("/ask")
-    public CompletableFuture<String> askQuestion(@RequestParam String question) {
-        return chatService.getAnswer(question);
+    public CompletableFuture<String> getAnswer(@RequestBody String question) {
+        return CompletableFuture.completedFuture(chatService.getAnswer(question));
     }
 } 
