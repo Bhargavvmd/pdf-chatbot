@@ -36,8 +36,22 @@ public class PdfController {
      */
     @PostMapping("/upload")
     public CompletableFuture<ResponseEntity<String>> uploadPdf(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return CompletableFuture.completedFuture(
+                ResponseEntity.badRequest().body("Please select a file to upload")
+            );
+        }
+
+        if (!file.getContentType().equals("application/pdf")) {
+            return CompletableFuture.completedFuture(
+                ResponseEntity.badRequest().body("Only PDF files are allowed")
+            );
+        }
+
         return pdfProcessingService.processPdf(file)
-            .thenApply(v -> ResponseEntity.ok("PDF processed successfully"));
+            .thenApply(v -> ResponseEntity.ok("PDF processed successfully"))
+            .exceptionally(e -> ResponseEntity.internalServerError()
+                .body("Error processing PDF: " + e.getMessage()));
     }
 
     /**
@@ -59,5 +73,11 @@ public class PdfController {
         return CompletableFuture.completedFuture(
             ResponseEntity.ok("Directory processing is not supported in this version")
         );
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<String> handleException(Exception e) {
+        return ResponseEntity.internalServerError()
+            .body("An error occurred: " + e.getMessage());
     }
 } 
