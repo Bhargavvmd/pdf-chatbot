@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequestMapping("/api/pdf")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:8080")
 public class PdfController {
     private final PdfProcessingService pdfProcessingService;
 
