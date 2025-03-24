@@ -13,11 +13,6 @@ public class WebConfig implements WebMvcConfigurer {
         // Main page
         registry.addViewController("/").setViewName("index");
         
-        // API endpoints
-        registry.addViewController("/api/pdf/upload").setViewName("index");
-        registry.addViewController("/api/pdf/process-directory").setViewName("index");
-        registry.addViewController("/api/chat/ask").setViewName("index");
-        
         // Error pages
         registry.addViewController("/error").setViewName("error");
     }
