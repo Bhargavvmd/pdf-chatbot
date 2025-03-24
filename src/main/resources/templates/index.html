@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>PDF Chatbot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .message {
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        .bot-message {
+            background-color: #f8f9fa;
+            color: #212529;
+        }
+        .upload-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px dashed #dee2e6;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">PDF Chatbot</h1>
+        
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <h3>Upload PDF</h3>
+            <form th:action="@{/upload}" method="post" enctype="multipart/form-data" class="mb-3">
+                <div class="mb-3">
+                    <input type="file" name="file" class="form-control" accept=".pdf" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Upload PDF</button>
+            </form>
+
+            <h3>Process Directory</h3>
+            <form th:action="@{/process-directory}" method="post" class="mb-3">
+                <div class="mb-3">
+                    <input type="text" name="directoryPath" class="form-control" placeholder="Enter directory path" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Process Directory</button>
+            </form>
+
+            <div th:if="${message}" class="alert alert-success" role="alert">
+                <span th:text="${message}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-danger" role="alert">
+                <span th:text="${error}"></span>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot-message">
+                Hello! I'm your PDF chatbot. You can ask me questions about the PDFs you've uploaded.
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <form id="chatForm" class="d-flex gap-2">
+            <input type="text" id="questionInput" class="form-control" placeholder="Type your question...">
+            <button type="submit" class="btn btn-primary">Send</button>
+        </form>
+    </div>
+
+    <script>
+        const chatForm = document.getElementById('chatForm');
+        const questionInput = document.getElementById('questionInput');
+        const chatContainer = document.getElementById('chatContainer');
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            // Add user message
+            addMessage(question, true);
+            questionInput.value = '';
+
+            try {
+                const response = await fetch('/api/chat/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain'
+                    },
+                    body: question
+                });
+
+                const answer = await response.text();
+                addMessage(answer, false);
+            } catch (error) {
+                addMessage('Sorry, I encountered an error. Please try again.', false);
+            }
+
+            // Scroll to bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        });
+
+        function addMessage(text, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.textContent = text;
+            chatContainer.appendChild(messageDiv);
+        }
+    </script>
+</body>
+</html> 
