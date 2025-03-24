@@ -33,6 +33,10 @@
             border: 1px dashed #dee2e6;
             border-radius: 0.5rem;
         }
+        #uploadStatus {
+            margin-top: 1rem;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -42,7 +46,7 @@
         <!-- Upload Section -->
         <div class="upload-section">
             <h3>Upload PDF</h3>
-            <form th:action="@{/upload}" method="post" enctype="multipart/form-data" class="mb-3">
+            <form id="uploadForm" class="mb-3">
                 <div class="mb-3">
                     <input type="file" name="file" class="form-control" accept=".pdf" required>
                 </div>
@@ -57,12 +61,7 @@
                 <button type="submit" class="btn btn-primary">Process Directory</button>
             </form>
 
-            <div th:if="${message}" class="alert alert-success" role="alert">
-                <span th:text="${message}"></span>
-            </div>
-            <div th:if="${error}" class="alert alert-danger" role="alert">
-                <span th:text="${error}"></span>
-            </div>
+            <div id="uploadStatus" class="alert" role="alert"></div>
         </div>
 
         <!-- Chat Section -->
@@ -83,7 +82,57 @@
         const chatForm = document.getElementById('chatForm');
         const questionInput = document.getElementById('questionInput');
         const chatContainer = document.getElementById('chatContainer');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadStatus = document.getElementById('uploadStatus');
 
+        // Handle file upload
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = uploadForm.querySelector('input[type="file"]');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showUploadStatus('Please select a file to upload', 'danger');
+                return;
+            }
+
+            if (file.type !== 'application/pdf') {
+                showUploadStatus('Only PDF files are allowed', 'danger');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/pdf/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.text();
+                
+                if (response.ok) {
+                    showUploadStatus(result, 'success');
+                    fileInput.value = ''; // Clear the file input
+                } else {
+                    showUploadStatus(result, 'danger');
+                }
+            } catch (error) {
+                showUploadStatus('Error uploading file: ' + error.message, 'danger');
+            }
+        });
+
+        function showUploadStatus(message, type) {
+            uploadStatus.textContent = message;
+            uploadStatus.className = `alert alert-${type}`;
+            uploadStatus.style.display = 'block';
+            setTimeout(() => {
+                uploadStatus.style.display = 'none';
+            }, 5000);
+        }
+
+        // Handle chat
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const question = questionInput.value.trim();
