@@ -1,6 +1,11 @@
 package com.chatbot.controller;
 
 import com.chatbot.service.PdfProcessingService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
  * All operations are asynchronous to handle potentially large PDF files
  * without blocking the server thread.
  */
+@Tag(name = "PDF Management", description = "APIs for managing PDF documents")
 @RestController
 @RequestMapping("/api/pdf")
 @RequiredArgsConstructor
@@ -35,8 +41,37 @@ public class PdfController {
      *         - 200 OK with success message if processing completes successfully
      *         - 500 Internal Server Error with error message if processing fails
      */
+    @Operation(
+        summary = "Upload PDF file",
+        description = "Uploads and processes a PDF file to extract Q&A pairs. " +
+                     "The file is processed asynchronously, and the Q&A pairs are stored in the vector database.",
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "PDF processed successfully",
+                content = @Content(mediaType = "text/plain")
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = "Invalid file or empty file",
+                content = @Content(mediaType = "text/plain")
+            ),
+            @ApiResponse(
+                responseCode = "500",
+                description = "Internal server error during processing",
+                content = @Content(mediaType = "text/plain")
+            )
+        }
+    )
     @PostMapping("/upload")
-    public CompletableFuture<ResponseEntity<String>> uploadPdf(@RequestParam("file") MultipartFile file) {
+    public CompletableFuture<ResponseEntity<String>> uploadPdf(
+        @Parameter(
+            description = "PDF file to process (must be a valid PDF file)",
+            required = true,
+            content = @Content(mediaType = "multipart/form-data")
+        )
+        @RequestParam("file") MultipartFile file
+    ) {
         if (file.isEmpty()) {
             return CompletableFuture.completedFuture(
                 ResponseEntity.badRequest().body("Please select a file to upload")
@@ -69,13 +104,39 @@ public class PdfController {
      *         - 200 OK with success message if all PDFs are processed successfully
      *         - 500 Internal Server Error with error message if processing fails
      */
+    @Operation(
+        summary = "Process PDF directory",
+        description = "Processes all PDF files in a specified directory. " +
+                     "This feature is not currently supported.",
+        responses = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "Directory processing status",
+                content = @Content(mediaType = "text/plain")
+            )
+        }
+    )
     @PostMapping("/process-directory")
-    public CompletableFuture<ResponseEntity<String>> processDirectory(@RequestParam String directoryPath) {
+    public CompletableFuture<ResponseEntity<String>> processDirectory(
+        @Parameter(description = "Path to directory containing PDF files")
+        @RequestParam String directoryPath
+    ) {
         return CompletableFuture.completedFuture(
             ResponseEntity.ok("Directory processing is not supported in this version")
         );
     }
 
+    @Operation(
+        summary = "Handle exceptions",
+        description = "Global exception handler for PDF operations",
+        responses = {
+            @ApiResponse(
+                responseCode = "500",
+                description = "Internal server error",
+                content = @Content(mediaType = "text/plain")
+            )
+        }
+    )
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception e) {
         return ResponseEntity.internalServerError()
