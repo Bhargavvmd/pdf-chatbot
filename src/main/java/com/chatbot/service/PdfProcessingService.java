@@ -43,7 +43,11 @@ public class PdfProcessingService {
             try {
                 log.info("Processing PDF file: {}", file.getOriginalFilename());
                 String text = extractTextFromPdf(file);
+                log.debug("Extracted text length: {} characters", text.length());
+                
                 List<Document> qaPairs = extractQAPairs(text);
+                log.info("Extracted {} Q&A pairs from PDF", qaPairs.size());
+                
                 storeQAPairs(qaPairs);
                 log.info("Successfully processed PDF file: {}", file.getOriginalFilename());
             } catch (Exception e) {
@@ -56,11 +60,14 @@ public class PdfProcessingService {
     private String extractTextFromPdf(MultipartFile file) throws IOException {
         try (PDDocument document = PDDocument.load(file.getInputStream())) {
             PDFTextStripper stripper = new PDFTextStripper();
-            return stripper.getText(document);
+            String text = stripper.getText(document);
+            log.info("Successfully extracted {} pages of text from PDF", document.getNumberOfPages());
+            return text;
         }
     }
 
     private List<Document> extractQAPairs(String text) {
+        log.info("Starting Q&A pair extraction from text");
         PromptTemplate promptTemplate = new PromptTemplate("""
                 {system}
                 
@@ -80,7 +87,9 @@ public class PdfProcessingService {
         );
         
         Prompt prompt = promptTemplate.create(model);
+        log.debug("Sending prompt to Ollama model");
         String response = chatModel.call(prompt).getResult().getOutput().getContent();
+        log.debug("Received response from Ollama model, length: {}", response.length());
         
         return parseQAPairs(response);
     }
@@ -89,11 +98,19 @@ public class PdfProcessingService {
         List<Document> qaPairs = new ArrayList<>();
         String[] pairs = response.split("\n\n");
         
+        log.info("Starting to parse {} potential Q&A pairs", pairs.length);
+        
         for (String pair : pairs) {
-            if (pair.trim().isEmpty()) continue;
+            if (pair.trim().isEmpty()) {
+                log.debug("Skipping empty pair");
+                continue;
+            }
             
             String[] lines = pair.split("\n");
-            if (lines.length < 2) continue;
+            if (lines.length < 2) {
+                log.debug("Skipping invalid pair - insufficient lines: {}", pair);
+                continue;
+            }
             
             String question = lines[0].substring(2).trim();
             String answer = String.join("\n", 
@@ -105,13 +122,33 @@ public class PdfProcessingService {
                 doc.getMetadata().put("question", question);
                 doc.getMetadata().put("answer", answer);
                 qaPairs.add(doc);
+                log.info("Generated Q&A Pair:");
+                log.info("Question: {}", question);
+                log.info("Answer: {}", answer);
+            } else {
+                log.debug("Skipping pair with empty question or answer");
             }
         }
         
+        log.info("Successfully parsed {} valid Q&A pairs", qaPairs.size());
         return qaPairs;
     }
 
     private void storeQAPairs(List<Document> qaPairs) {
-        vectorStore.add(qaPairs);
+        try {
+            log.info("Attempting to store {} Q&A pairs in vector store", qaPairs.size());
+            for (Document doc : qaPairs) {
+                if (doc.getEmbedding() != null) {
+                    log.debug("Document embedding dimensions: {}", doc.getEmbedding().length);
+                } else {
+                    log.warn("Document has no embedding");
+                }
+            }
+            vectorStore.add(qaPairs);
+            log.info("Successfully stored Q&A pairs in vector store");
+        } catch (Exception e) {
+            log.error("Error storing Q&A pairs in vector store: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 } 
