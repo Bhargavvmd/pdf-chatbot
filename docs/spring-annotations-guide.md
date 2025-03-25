@@ -403,3 +403,210 @@ springdoc.info.version=1.0.0
 5. **Security Documentation**
    - Document authentication requirements
    - Specify required scopes or roles 
+
+### Bean Lifecycle Annotations
+1. `@PostConstruct`
+   - Method is called after dependency injection is complete
+   - Used for initialization code
+   - Usage:
+   ```java
+   @PostConstruct
+   public void init() {
+       // initialization code
+   }
+   ```
+
+2. `@PreDestroy`
+   - Method is called before bean is destroyed
+   - Used for cleanup code
+   - Usage:
+   ```java
+   @PreDestroy
+   public void cleanup() {
+       // cleanup code
+   }
+   ```
+
+### Validation Annotations
+1. `@Valid`
+   - Triggers validation of an object
+   - Usage: `public void saveUser(@Valid @RequestBody User user)`
+
+2. `@Validated`
+   - Enables validation at class level
+   - Usage: `@Validated public class UserService`
+
+3. `@NotNull`
+   - Validates that field is not null
+   - Usage: `@NotNull private String name;`
+
+4. `@Size`
+   - Validates size of string, collection, or array
+   - Usage: `@Size(min = 2, max = 30) private String name;`
+
+5. `@Min` / `@Max`
+   - Validates numeric value bounds
+   - Usage: `@Min(18) @Max(100) private int age;`
+
+6. `@Pattern`
+   - Validates string against regex pattern
+   - Usage: `@Pattern(regexp = "^[A-Za-z0-9+_.-]+@(.+)$") private String email;`
+
+7. `@Email`
+   - Validates email format
+   - Usage: `@Email private String email;`
+
+### Cache Annotations
+1. `@Cacheable`
+   - Caches method result
+   - Usage: `@Cacheable("users") public User getUser(String id)`
+
+2. `@CacheEvict`
+   - Removes entries from cache
+   - Usage: `@CacheEvict(value = "users", allEntries = true)`
+
+3. `@CachePut`
+   - Updates cache without affecting method execution
+   - Usage: `@CachePut(value = "users", key = "#user.id")`
+
+### Transaction Annotations
+1. `@Transactional`
+   - Defines transaction boundaries
+   - Usage: 
+   ```java
+   @Transactional(readOnly = true)
+   public User getUser(String id)
+   ```
+
+2. `@EnableTransactionManagement`
+   - Enables Spring's transaction management
+   - Usage: `@EnableTransactionManagement public class Config`
+
+### Security Annotations
+1. `@Secured`
+   - Defines access control based on roles
+   - Usage: `@Secured("ROLE_ADMIN")`
+
+2. `@PreAuthorize`
+   - More flexible security expression
+   - Usage: `@PreAuthorize("hasRole('ADMIN') and #user.id == authentication.principal.id")`
+
+3. `@PostAuthorize`
+   - Checks after method execution
+   - Usage: `@PostAuthorize("returnObject.userId == authentication.principal.id")`
+
+### Scheduling Annotations
+1. `@Scheduled`
+   - Configures method for scheduling
+   - Usage:
+   ```java
+   @Scheduled(fixedRate = 1000)
+   public void scheduleTask() {}
+   ```
+
+2. `@EnableScheduling`
+   - Enables scheduling capabilities
+   - Usage: `@EnableScheduling public class Config`
+
+### Event Handling Annotations
+1. `@EventListener`
+   - Marks method as event listener
+   - Usage:
+   ```java
+   @EventListener
+   public void handleUserCreatedEvent(UserCreatedEvent event) {}
+   ```
+
+2. `@TransactionalEventListener`
+   - Listens for events within transaction
+   - Usage:
+   ```java
+   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+   public void handleUserCreatedEvent(UserCreatedEvent event) {}
+   ```
+
+### Additional JPA Annotations
+1. `@Column`
+   - Specifies column mapping
+   - Usage: `@Column(name = "user_name", length = 50)`
+
+2. `@JoinColumn`
+   - Specifies foreign key column
+   - Usage: `@JoinColumn(name = "user_id")`
+
+3. `@OneToMany` / `@ManyToOne`
+   - Defines relationship mapping
+   - Usage:
+   ```java
+   @OneToMany(mappedBy = "user")
+   private List<Order> orders;
+   ```
+
+4. `@Enumerated`
+   - Specifies how to persist enum
+   - Usage: `@Enumerated(EnumType.STRING)`
+
+### Aspect-Oriented Programming (AOP) Annotations
+1. `@Aspect`
+   - Declares class as aspect
+   - Usage: `@Aspect public class LoggingAspect`
+
+2. `@Around`
+   - Defines around advice
+   - Usage:
+   ```java
+   @Around("execution(* com.example.service.*.*(..))")
+   public Object logExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable
+   ```
+
+3. `@Before` / `@After`
+   - Defines before/after advice
+   - Usage: `@Before("execution(* com.example.service.*.*(..))")`
+
+### Testing Additional Annotations
+1. `@DataJpaTest`
+   - Configures JPA test slice
+   - Usage: `@DataJpaTest class UserRepositoryTest`
+
+2. `@WebMvcTest`
+   - Configures MVC test slice
+   - Usage: `@WebMvcTest(UserController.class)`
+
+3. `@AutoConfigureMockMvc`
+   - Configures MockMvc
+   - Usage: `@AutoConfigureMockMvc class ControllerTest`
+
+### Conditional Annotations
+1. `@ConditionalOnProperty`
+   - Condition based on property value
+   - Usage: `@ConditionalOnProperty(name = "feature.enabled", havingValue = "true")`
+
+2. `@Profile`
+   - Condition based on active profile
+   - Usage: `@Profile("dev")`
+
+3. `@ConditionalOnBean`
+   - Condition based on bean existence
+   - Usage: `@ConditionalOnBean(DataSource.class)`
+
+### Best Practices for Additional Annotations
+
+1. **Lifecycle Management**
+   - Use @PostConstruct for initialization instead of constructor
+   - Use @PreDestroy for cleanup instead of finalize()
+
+2. **Validation**
+   - Combine multiple constraints when needed
+   - Use custom validation for complex rules
+
+3. **Caching**
+   - Use appropriate cache names and keys
+   - Consider cache eviction strategy
+
+4. **Transactions**
+   - Define appropriate transaction boundaries
+   - Use readOnly when possible
+
+5. **Security**
+   - Use method security over URL security when possible
+   - Prefer @PreAuthorize over @Secured for flexibility 
